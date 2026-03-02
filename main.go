@@ -1,6 +1,6 @@
 package main
 
-import "github.com/loulou/pipelink/cmd"
+import "github.com/louloulibs/pipelink/cmd"
 
 func main() {
 	cmd.Execute()

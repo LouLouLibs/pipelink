@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/loulou/pipelink/internal/config"
-	"github.com/loulou/pipelink/internal/display"
-	"github.com/loulou/pipelink/internal/linker"
+	"github.com/louloulibs/pipelink/internal/config"
+	"github.com/louloulibs/pipelink/internal/display"
+	"github.com/louloulibs/pipelink/internal/linker"
 	"github.com/spf13/cobra"
 )
 

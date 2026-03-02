@@ -14,7 +14,7 @@ func TestIntegration_LinkCommand(t *testing.T) {
 	// Build the binary
 	binPath := filepath.Join(t.TempDir(), "pipelink")
 	build := exec.Command("go", "build", "-o", binPath, ".")
-	build.Dir = "/Users/loulou/Dropbox/projects_claude/pipelink"
+	build.Dir = "."
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %s\n%s", err, out)
 	}
@@ -33,7 +33,7 @@ func TestIntegration_LinkCommand(t *testing.T) {
 	os.WriteFile(filepath.Join(srcDir, "subdir", "inside.txt"), []byte("dir"), 0644)
 
 	// Read and rewrite the test TOML with actual paths
-	tomlBytes, _ := os.ReadFile("/Users/loulou/Dropbox/projects_claude/pipelink/testdata/basic.toml")
+	tomlBytes, _ := os.ReadFile("testdata/basic.toml")
 	tomlStr := string(tomlBytes)
 	tomlStr = strings.ReplaceAll(tomlStr, "SRCDIR", srcDir)
 	tomlStr = strings.ReplaceAll(tomlStr, "TGTDIR", tgtDir)
@@ -75,7 +75,7 @@ func TestIntegration_LinkCommand(t *testing.T) {
 func TestIntegration_ValidateCommand(t *testing.T) {
 	binPath := filepath.Join(t.TempDir(), "pipelink")
 	build := exec.Command("go", "build", "-o", binPath, ".")
-	build.Dir = "/Users/loulou/Dropbox/projects_claude/pipelink"
+	build.Dir = "."
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %s\n%s", err, out)
 	}
@@ -88,7 +88,7 @@ func TestIntegration_ValidateCommand(t *testing.T) {
 	os.WriteFile(filepath.Join(srcDir, "a.csv"), []byte("a"), 0644)
 	os.WriteFile(filepath.Join(srcDir, "b.csv"), []byte("b"), 0644)
 
-	tomlBytes, _ := os.ReadFile("/Users/loulou/Dropbox/projects_claude/pipelink/testdata/basic.toml")
+	tomlBytes, _ := os.ReadFile("testdata/basic.toml")
 	tomlStr := strings.ReplaceAll(string(tomlBytes), "SRCDIR", srcDir)
 	tomlStr = strings.ReplaceAll(tomlStr, "TGTDIR", filepath.Join(tmpDir, "tgt"))
 	configPath := filepath.Join(tmpDir, "test.toml")
@@ -107,7 +107,7 @@ func TestIntegration_ValidateCommand(t *testing.T) {
 func TestIntegration_DryRun(t *testing.T) {
 	binPath := filepath.Join(t.TempDir(), "pipelink")
 	build := exec.Command("go", "build", "-o", binPath, ".")
-	build.Dir = "/Users/loulou/Dropbox/projects_claude/pipelink"
+	build.Dir = "."
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %s\n%s", err, out)
 	}

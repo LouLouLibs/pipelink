@@ -1,4 +1,4 @@
-module github.com/loulou/pipelink
+module github.com/louloulibs/pipelink
 
 go 1.25.0
 
