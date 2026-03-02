@@ -1,0 +1,33 @@
+[SINGLE_FILE.metadata]
+type = "file"
+description = "A single test file"
+
+[SINGLE_FILE.source]
+directory = "SRCDIR"
+file = "data.csv"
+
+[SINGLE_FILE.target]
+directory = "TGTDIR"
+file = "data.csv"
+
+[MULTI_FILES.metadata]
+type = "files"
+description = "Multiple test files"
+
+[MULTI_FILES.source]
+directory = "SRCDIR"
+file = ["a.csv", "b.csv"]
+
+[MULTI_FILES.target]
+directory = "TGTDIR"
+file = ["a.csv", "b.csv"]
+
+[A_DIRECTORY.metadata]
+type = "directory"
+description = "A whole directory"
+
+[A_DIRECTORY.source]
+directory = "SRCDIR/subdir"
+
+[A_DIRECTORY.target]
+directory = "TGTDIR/subdir"

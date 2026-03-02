@@ -26,6 +26,14 @@ func init() {
 	rootCmd.AddCommand(linkCmd)
 }
 
+// resolveDir returns dir as-is if it is absolute, otherwise joins it with base.
+func resolveDir(base, dir string) string {
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	return filepath.Join(base, dir)
+}
+
 func runLink(cmd *cobra.Command, args []string) error {
 	configPath := args[0]
 	cwd, _ := os.Getwd()
@@ -80,7 +88,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 			if len(tgtFiles) > 0 {
 				tgtFile = tgtFiles[0]
 			}
-			tgtDir := filepath.Join(cwd, e.Target.Directory)
+			tgtDir := resolveDir(cwd, e.Target.Directory)
 			tgtPath := filepath.Join(tgtDir, tgtFile)
 
 			if err := linker.EnsureDir(tgtDir); err != nil && verbose {
@@ -101,7 +109,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 		case "directory":
 			srcPath := filepath.Join(srcTask, e.Source.Directory)
-			tgtPath := filepath.Join(cwd, e.Target.Directory)
+			tgtPath := resolveDir(cwd, e.Target.Directory)
 
 			parentDir := filepath.Dir(tgtPath)
 			if err := linker.EnsureDir(parentDir); err != nil && verbose {
@@ -129,9 +137,10 @@ func runLink(cmd *cobra.Command, args []string) error {
 			}
 
 			// Ensure target directories exist
+			tgtBase := resolveDir(cwd, e.Target.Directory)
 			tgtDirs := make(map[string]bool)
 			for _, tf := range tgtFiles {
-				d := filepath.Dir(filepath.Join(cwd, e.Target.Directory, tf))
+				d := filepath.Dir(filepath.Join(tgtBase, tf))
 				tgtDirs[d] = true
 			}
 			for d := range tgtDirs {
@@ -140,7 +149,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 			for i, sf := range srcFiles {
 				srcPath := filepath.Join(srcTask, e.Source.Directory, sf)
-				tgtPath := filepath.Join(cwd, e.Target.Directory, tgtFiles[i])
+				tgtPath := filepath.Join(tgtBase, tgtFiles[i])
 
 				if i < 5 {
 					display.LinkPair(tgtPath, srcPath)
