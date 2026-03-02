@@ -10,13 +10,13 @@ Download the latest binary for your platform from the [releases page](https://gi
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_darwin_arm64.tar.gz | tar xz
+curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_darwin_arm64.tar.gz | tar xz
 
 # macOS (Intel)
-curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_darwin_amd64.tar.gz | tar xz
+curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_darwin_amd64.tar.gz | tar xz
 
 # Linux (x86_64)
-curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_linux_amd64.tar.gz | tar xz
+curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_linux_amd64.tar.gz | tar xz
 ```
 
 ### Build from source
