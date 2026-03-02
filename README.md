@@ -11,15 +11,12 @@ Download the latest binary for your platform from the [releases page](https://gi
 ```bash
 # macOS (Apple Silicon)
 curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_darwin_arm64.tar.gz | tar xz
-sudo mv pipelink /usr/local/bin/
 
 # macOS (Intel)
 curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_darwin_amd64.tar.gz | tar xz
-sudo mv pipelink /usr/local/bin/
 
 # Linux (x86_64)
 curl -L https://github.com/louloulibs/pipelink/releases/latest/download/pipelink_<version>_linux_amd64.tar.gz | tar xz
-sudo mv pipelink /usr/local/bin/
 ```
 
 ### Build from source
@@ -33,14 +30,6 @@ go build -ldflags="-s -w" -o pipelink .
 ```
 
 The `-ldflags="-s -w"` flag strips debug symbols for a smaller binary (~4 MB → ~3 MB).
-
-Move the binary to a directory on your `PATH`:
-
-```bash
-sudo mv pipelink /usr/local/bin/
-# or for user-local install:
-mv pipelink ~/.local/bin/
-```
 
 ## Usage
 
@@ -194,7 +183,63 @@ rule link_inputs:
         "pipelink link {input.config} && touch {output}"
 ```
 
-Or combined with [Nickel](https://nickel-lang.org/) for type-safe configuration:
+## Nickel configuration
+
+Pipelink pairs well with [Nickel](https://nickel-lang.org/) for type-safe, validated configuration. Instead of writing TOML by hand, define links in a `.ncl` file with contracts that enforce correct structure, then export to TOML.
+
+A typical `input.ncl` in a project directory:
+
+```nickel
+let link_contracts = import "../utilities/config/nickel/link_contracts.ncl" in
+let
+    Link = link_contracts.link,
+    serialize_records = link_contracts.serialize_records
+in
+
+{
+  MUNI_AGG_BONDS | Link = 'files {
+    source = {
+      file = ["TOWN_AGG_bond_issuance.csv.gz",
+              "COUNTY_AGG_bond_issuance.csv.gz",
+              "STATE_AGG_bond_issuance.csv.gz"],
+      directory = "/data/import_MuniBonds/output",
+    },
+    target = { directory = "./input/MuniBonds" },
+    metadata = {
+      generated_by = ["import_MERGENT_state.R"],
+      description = "Aggregate bond issuances",
+    },
+  },
+
+  SALOMONBONDS | Link = 'file {
+    source = {
+      file = "SalomonBrothers_yields.xlsx",
+      directory = "/data/PrivateData/SalomonBrothers",
+    },
+    target = { directory = "./input/MuniBonds" },
+  },
+
+  GSW | Link = 'files {
+    source = {
+      file = ["GSW_parameters.parquet", "GSW_treasury_yields.parquet"],
+      directory = "/data/FederalReserve/GSW",
+    },
+    target = { directory = "./input/MuniBonds" },
+  },
+}
+|> serialize_records
+```
+
+The `Link` contract validates each entry as one of three enum variants (`'file`, `'files`, `'dir`), and `serialize_records` flattens the structure into the TOML schema pipelink expects. Target filenames default to source filenames when omitted.
+
+Export to TOML and link in one step:
+
+```bash
+nickel export input.ncl --format toml > tmp/input.toml
+pipelink link tmp/input.toml
+```
+
+Or as a Snakemake rule:
 
 ```python
 rule link_inputs:
