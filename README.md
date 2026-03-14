@@ -72,38 +72,38 @@ Pipelink reads a TOML file where each top-level table defines one link. Each ent
 ### Link a single file
 
 ```toml
-[SALOMON_YIELDS.metadata]
+[STATION_TEMPS.metadata]
 type = "file"
-description = "Salomon Brothers yield data"
+description = "Weather station temperature readings"
 
-[SALOMON_YIELDS.source]
-directory = "/data/SalomonBrothers"
-file = "SalomonBrothers_yields.xlsx"
+[STATION_TEMPS.source]
+directory = "/data/NOAA"
+file = "station_temps_2025.csv"
 
-[SALOMON_YIELDS.target]
-directory = "./input/MuniBonds"
-file = "SalomonBrothers_yields.xlsx"
+[STATION_TEMPS.target]
+directory = "./input/Weather"
+file = "station_temps_2025.csv"
 ```
 
 ### Link multiple files
 
 ```toml
-[GSW.metadata]
+[POPULATION.metadata]
 type = "files"
-description = "GSW interest rate model parameters"
+description = "County population estimates"
 
-[GSW.source]
-directory = "/data/FederalReserve/GSW"
+[POPULATION.source]
+directory = "/data/Census/Population"
 file = [
-    "GSW_parameters.parquet",
-    "GSW_treasury_yields.parquet",
+    "county_population.parquet",
+    "county_demographics.parquet",
 ]
 
-[GSW.target]
-directory = "./input/MuniBonds"
+[POPULATION.target]
+directory = "./input/Census"
 file = [
-    "GSW_parameters.parquet",
-    "GSW_treasury_yields.parquet",
+    "county_population.parquet",
+    "county_demographics.parquet",
 ]
 ```
 
@@ -157,12 +157,12 @@ Pipelink prints colored output showing each link with Unicode arrows:
 
       4 files to process
 
-Linking  GSW     (multiple files)
-         GSW interest rate model parameters
-Target:  ┌─▶ input/MuniBonds/GSW_parameters.parquet
-Source:  └── data/FederalReserve/GSW/GSW_parameters.parquet
-Target:  ┌─▶ input/MuniBonds/GSW_treasury_yields.parquet
-Source:  └── data/FederalReserve/GSW/GSW_treasury_yields.parquet
+Linking  POPULATION     (multiple files)
+         County population estimates
+Target:  ┌─▶ input/Census/county_population.parquet
+Source:  └── data/Census/Population/county_population.parquet
+Target:  ┌─▶ input/Census/county_demographics.parquet
+Source:  └── data/Census/Population/county_demographics.parquet
 
 ✓ 4 links created
 ```
@@ -197,34 +197,33 @@ let
 in
 
 {
-  MUNI_AGG_BONDS | Link = 'files {
+  POPULATION | Link = 'files {
     source = {
-      file = ["TOWN_AGG_bond_issuance.csv.gz",
-              "COUNTY_AGG_bond_issuance.csv.gz",
-              "STATE_AGG_bond_issuance.csv.gz"],
-      directory = "/data/import_MuniBonds/output",
+      file = ["county_population.parquet",
+              "county_demographics.parquet"],
+      directory = "/data/Census/Population",
     },
-    target = { directory = "./input/MuniBonds" },
+    target = { directory = "./input/Census" },
     metadata = {
-      generated_by = ["import_MERGENT_state.R"],
-      description = "Aggregate bond issuances",
+      generated_by = ["import_census.R"],
+      description = "County population estimates",
     },
   },
 
-  SALOMONBONDS | Link = 'file {
+  STATION_TEMPS | Link = 'file {
     source = {
-      file = "SalomonBrothers_yields.xlsx",
-      directory = "/data/PrivateData/SalomonBrothers",
+      file = "station_temps_2025.csv",
+      directory = "/data/NOAA",
     },
-    target = { directory = "./input/MuniBonds" },
+    target = { directory = "./input/Weather" },
   },
 
-  GSW | Link = 'files {
+  TIGER_LINES | Link = 'files {
     source = {
-      file = ["GSW_parameters.parquet", "GSW_treasury_yields.parquet"],
-      directory = "/data/FederalReserve/GSW",
+      file = ["tl_counties.shp", "tl_states.shp"],
+      directory = "/data/Census/ShapeFiles",
     },
-    target = { directory = "./input/MuniBonds" },
+    target = { directory = "./input/ShapeFiles" },
   },
 }
 |> serialize_records
