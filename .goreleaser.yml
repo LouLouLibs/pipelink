@@ -3,6 +3,12 @@ version: 2
 builds:
   - id: pipelink
     binary: pipelink
+    env:
+      # Static binaries: a cgo-enabled build links libc and picks up GLIBC_2.34
+      # symbols from the CI runner, which will not load on older HPC userlands
+      # (RHEL/Rocky 8 is glibc 2.28). Nothing here imports net or os/user, so
+      # disabling cgo is behaviorally a no-op.
+      - CGO_ENABLED=0
     ldflags:
       - -s -w
     goos:
