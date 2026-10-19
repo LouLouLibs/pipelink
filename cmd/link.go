@@ -53,7 +53,22 @@ func runLink(cmd *cobra.Command, args []string) error {
 	// Phase 1: check all paths, separate valid from missing
 	var missing []string
 	valid := make(map[string]config.Entry)
+	remoteNames := make(map[string]bool)
 	for name, e := range entries {
+		if e.Metadata.Type == "remote" {
+			resolved, err := resolveRemote(e)
+			if err != nil {
+				missing = append(missing, name+" ... "+err.Error())
+				continue
+			}
+			if !linker.CheckPath("file", resolved.Source.Directory, resolved.Source.File.Strings(), "") {
+				missing = append(missing, name+" ... "+e.Source.URI+" not cached (run pipelink pull)")
+				continue
+			}
+			valid[name] = resolved
+			remoteNames[name] = true
+			continue
+		}
 		srcFiles := e.Source.File.Strings()
 		if linker.CheckPath(e.Metadata.Type, e.Source.Directory, srcFiles, e.Source.Task) {
 			valid[name] = e
@@ -72,7 +87,11 @@ func runLink(cmd *cobra.Command, args []string) error {
 	created := 0
 	var linkErrors []error
 	for name, e := range valid {
-		display.EntryHeader(name, e.Metadata.Type, e.Metadata.Description)
+		headerType := e.Metadata.Type
+		if remoteNames[name] {
+			headerType = "remote"
+		}
+		display.EntryHeader(name, headerType, e.Metadata.Description)
 
 		srcTask := e.Source.Task
 

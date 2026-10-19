@@ -38,8 +38,16 @@ func runValidate(cmd *cobra.Command, args []string) error {
 
 	anyMissing := false
 	for name, e := range entries {
-		srcFiles := e.Source.File.Strings()
-		ok := linker.CheckPath(e.Metadata.Type, e.Source.Directory, srcFiles, e.Source.Task)
+		var ok bool
+		if e.Metadata.Type == "remote" {
+			resolved, err := resolveRemote(e)
+			ok = err == nil && linker.CheckPath("file", resolved.Source.Directory, resolved.Source.File.Strings(), "")
+			if ok {
+				e = resolved
+			}
+		} else {
+			ok = linker.CheckPath(e.Metadata.Type, e.Source.Directory, e.Source.File.Strings(), e.Source.Task)
+		}
 
 		if ok {
 			green.Fprintf(os.Stderr, "  ✓ ")
@@ -50,6 +58,9 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "%s", name)
 
 		srcDir := filepath.Join(e.Source.Task, e.Source.Directory)
+		if e.Metadata.Type == "remote" {
+			srcDir = e.Source.URI + ", not cached: run pipelink pull"
+		}
 		fmt.Fprintf(os.Stderr, "  (%s)\n", srcDir)
 	}
 

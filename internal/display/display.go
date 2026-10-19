@@ -40,6 +40,8 @@ func EntryHeader(name, linkType, description string) {
 		darkGreen.Fprintf(color.Error, "    (multiple files)")
 	case "directory":
 		darkGreen.Fprintf(color.Error, "    (directory)")
+	case "remote":
+		darkGreen.Fprintf(color.Error, "    (remote, cached)")
 	}
 	fmt.Fprintln(color.Error)
 	if description != "" {
@@ -91,6 +93,26 @@ func Summary(created, skipped int) {
 		green.Fprintf(color.Error, "✓ %d links created\n", created)
 	} else {
 		yellow.Fprintf(color.Error, "✓ %d links created, %d sources missing (skipped)\n", created, skipped)
+	}
+	fmt.Fprintln(color.Error)
+}
+
+// PullLine prints one line of "pipelink pull" output.
+func PullLine(name, status, uri, cachePath string) {
+	c := green
+	switch status {
+	case "downloaded":
+		c = color.New(color.Bold, color.FgGreen)
+	case "missing":
+		c = yellow
+	case "error":
+		c = boldRed
+	}
+	c.Fprintf(color.Error, "  %-10s ", status)
+	bold.Fprintf(color.Error, "%s", name)
+	dimItalic.Fprintf(color.Error, "  %s", uri)
+	if cachePath != "" {
+		dimItalic.Fprintf(color.Error, " -> %s", cachePath)
 	}
 	fmt.Fprintln(color.Error)
 }

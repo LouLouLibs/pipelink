@@ -16,6 +16,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install rclone (remote-source tests)
+        run: sudo apt-get update && sudo apt-get install -y rclone
+
       - name: Unit tests
         run: go test ./... -v
 
