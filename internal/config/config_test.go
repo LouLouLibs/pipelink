@@ -182,3 +182,34 @@ func writeTempTOML(t *testing.T, content string) string {
 	}
 	return path
 }
+
+func TestLoadConfig_Remote(t *testing.T) {
+	content := `
+[PANEL.metadata]
+type = "remote"
+description = "13F holdings panel"
+license = "WRDS; UMN only"
+
+[PANEL.source]
+uri = "s3-msi:bucket/13f/holdings.parquet"
+sha256 = "abc123"
+cache = "~/data/cache"
+
+[PANEL.target]
+directory = "input/13F"
+`
+	entries, err := LoadConfig(writeTempTOML(t, content))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries["PANEL"]
+	if e.Metadata.Type != "remote" || e.Metadata.License != "WRDS; UMN only" {
+		t.Errorf("unexpected metadata: %+v", e.Metadata)
+	}
+	if e.Source.URI != "s3-msi:bucket/13f/holdings.parquet" || e.Source.SHA256 != "abc123" || e.Source.Cache != "~/data/cache" {
+		t.Errorf("unexpected source: %+v", e.Source)
+	}
+	if got := e.Target.File.Strings(); len(got) != 1 || got[0] != "holdings.parquet" {
+		t.Errorf("target.file should default to uri basename, got %v", got)
+	}
+}

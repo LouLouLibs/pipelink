@@ -13,6 +13,10 @@ var rootCmd = &cobra.Command{
 	Use:   "pipelink",
 	Short: "Create symlinks across projects from TOML config",
 	Long:  "Pipelink reads a TOML configuration file and creates symbolic links to wire up data dependencies between project directories.",
+	// Errors are reported once by the commands / Execute; don't repeat them
+	// or print usage on runtime failures.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 func Execute() {

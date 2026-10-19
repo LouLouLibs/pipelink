@@ -57,6 +57,24 @@ pipelink validate input.toml
 
 Exits with code 0 if all sources are present, 1 if any are missing.
 
+### `pipelink pull`
+
+Download every `type = "remote"` entry into the local cache and verify it against its pinned sha256 (see [Remote sources](#remote-sources)). Files already cached with a matching hash are skipped. Run `link` afterwards.
+
+```bash
+pipelink pull input.toml            # fetch what is missing or changed
+pipelink pull --dry-run input.toml  # list remote entries and whether they are cached
+pipelink pull --verify input.toml   # re-hash cached files instead of trusting their stamps
+```
+
+### `pipelink push`
+
+Upload a local file to an rclone remote and print its sha256 with ready-to-paste TOML and Nickel snippets. Config files are not modified.
+
+```bash
+pipelink push holdings.parquet s3-msi:bucket/project/13f/holdings.parquet
+```
+
 ### Flags
 
 | Flag | Short | Description |
@@ -123,15 +141,43 @@ directory = "/data/Census/ShapeFiles"
 directory = "input/ShapeFiles/Census"
 ```
 
+### Remote sources
+
+Some inputs are not produced by a sibling project: large shared datasets built once (e.g. a holdings panel used by several projects) or public replication packages. Keep them out of git, on remote storage, and declare them with `type = "remote"`. `pipelink pull` downloads them into a cache shared by all projects on the machine, and `pipelink link` symlinks the cached file into place like any local source.
+
+```toml
+[HOLDINGS.metadata]
+type        = "remote"
+description = "Holdings panel, 1980-2024"
+license     = "Licensed data: institution use only"   # optional, informational
+
+[HOLDINGS.source]
+uri    = "s3-msi:bucket/project/13f/holdings.parquet"  # rclone remote:path, or https:// URL
+sha256 = "9db34bb6f836d8e7..."                          # pins the version; pull fails on mismatch
+# cache = "~/data/cache"                                # optional
+
+[HOLDINGS.target]
+directory = "input/13F"
+file      = "holdings.parquet"   # optional; defaults to the basename of uri
+```
+
+- **Backends.** `https://` and `http://` URLs are fetched directly. Anything else is an [rclone](https://rclone.org) path (`remote:path`, including on-the-fly remotes such as `:local:/abs/path`), so every rclone backend works: S3, SFTP, Google Drive, Dropbox… rclone must be on `PATH` (or set `PIPELINK_RCLONE`), and credentials come from your rclone config.
+- **Cache.** `source.cache` if set, else `$PIPELINK_CACHE`, else `~/.cache/pipelink`. The layout mirrors the URI (`<cache>/<remote>/<path>` or `<cache>/<host>/<path>`), and URIs containing `..` are rejected. Two projects that pin the same file share one cached copy.
+- **Integrity.** Downloads go to a temporary file and are renamed into place only after the sha256 matches, so a failed or wrong download never replaces a good cached file. After verification, pipelink writes a stamp (`.<name>.pipelink`: hash, size, mtime) so later pulls of multi-GB files skip re-hashing while the file is untouched. `--verify` ignores stamps.
+- **Unpinned entries.** If `sha256` is omitted, `pull` still downloads, then prints the hash with a warning so you can pin it.
+- **link / validate.** A remote entry counts as present only once it is cached. Neither command touches the network, and `link` reports uncached entries as missing with a hint to run `pull`.
+- **Single files only.** Archive a directory (`tar`) before pushing it.
+
 ### Config reference
 
 **`metadata` (required)**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | string | `"file"`, `"files"`, or `"directory"` |
+| `type` | string | `"file"`, `"files"`, `"directory"`, or `"remote"` |
 | `description` | string | Optional human-readable description |
 | `generated_by` | string[] | Optional list of scripts that produce the source |
+| `license` | string | Optional; informational, e.g. for licensed remote data |
 
 **`source` (required)**
 
@@ -140,13 +186,16 @@ directory = "input/ShapeFiles/Census"
 | `directory` | string | Absolute path to the source directory |
 | `file` | string or string[] | Filename(s) within the directory. Omit for `type = "directory"` |
 | `task` | string | Optional path prefix prepended to `directory` |
+| `uri` | string | `remote` only: rclone `remote:path` or `https://` URL |
+| `sha256` | string | `remote` only: expected hash of the file (strongly recommended) |
+| `cache` | string | `remote` only: cache root override (default `$PIPELINK_CACHE` or `~/.cache/pipelink`) |
 
 **`target` (required)**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `directory` | string | Path to the target directory (relative to working directory, or absolute) |
-| `file` | string or string[] | Target filename(s). Defaults to source filenames if omitted |
+| `file` | string or string[] | Target filename(s). Defaults to source filenames (for `remote`, the basename of `uri`) if omitted |
 
 ## Output
 

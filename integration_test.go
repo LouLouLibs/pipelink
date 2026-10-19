@@ -3,6 +3,10 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,5 +145,89 @@ file = "data.csv"
 	// Target should NOT exist after dry run
 	if _, err := os.Lstat(filepath.Join(tgtDir, "data.csv")); err == nil {
 		t.Error("dry-run should not create symlinks")
+	}
+}
+
+func TestIntegration_RemotePullLink(t *testing.T) {
+	binPath := filepath.Join(t.TempDir(), "pipelink")
+	build := exec.Command("go", "build", "-o", binPath, ".")
+	build.Dir = "."
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	payload := []byte("shared 13F panel stand-in")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/data/holdings.parquet" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write(payload)
+	}))
+	defer srv.Close()
+	sum := sha256.Sum256(payload)
+
+	tmpDir := t.TempDir()
+	cacheDir := filepath.Join(tmpDir, "cache")
+	toml := `
+[PANEL.metadata]
+type = "remote"
+description = "panel"
+[PANEL.source]
+uri = "` + srv.URL + `/data/holdings.parquet"
+sha256 = "` + hex.EncodeToString(sum[:]) + `"
+[PANEL.target]
+directory = "input/13F"
+`
+	configPath := filepath.Join(tmpDir, "input.toml")
+	os.WriteFile(configPath, []byte(toml), 0644)
+
+	run := func(args ...string) (string, error) {
+		cmd := exec.Command(binPath, args...)
+		cmd.Dir = tmpDir
+		cmd.Env = append(os.Environ(), "PIPELINK_CACHE="+cacheDir)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	// before pull: validate fails, link reports the entry as missing
+	if out, err := run("validate", configPath); err == nil {
+		t.Fatalf("validate should fail before pull: %s", out)
+	}
+	if out, _ := run("link", configPath); !strings.Contains(out, "run pipelink pull") {
+		t.Errorf("link should hint at pull, got: %s", out)
+	}
+
+	out, err := run("pull", configPath)
+	if err != nil || !strings.Contains(out, "downloaded") {
+		t.Fatalf("pull failed: %v\n%s", err, out)
+	}
+	if out, err := run("pull", configPath); err != nil || !strings.Contains(out, "cached") {
+		t.Fatalf("second pull should be a no-op: %v\n%s", err, out)
+	}
+	if out, err := run("validate", configPath); err != nil {
+		t.Fatalf("validate after pull: %v\n%s", err, out)
+	}
+	if out, err := run("link", configPath); err != nil {
+		t.Fatalf("link failed: %v\n%s", err, out)
+	}
+
+	link := filepath.Join(tmpDir, "input", "13F", "holdings.parquet")
+	info, err := os.Lstat(link)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected symlink at %s", link)
+	}
+	if b, _ := os.ReadFile(link); string(b) != string(payload) {
+		t.Errorf("symlink content = %q", b)
+	}
+
+	// a wrong pin is an error and leaves the cache untouched
+	bad := strings.Replace(toml, hex.EncodeToString(sum[:]), strings.Repeat("0", 64), 1)
+	os.WriteFile(configPath, []byte(bad), 0644)
+	if out, err := run("pull", configPath); err == nil || !strings.Contains(out, "sha256 mismatch") {
+		t.Errorf("expected mismatch error, got %v\n%s", err, out)
+	}
+	if b, _ := os.ReadFile(link); string(b) != string(payload) {
+		t.Errorf("cache corrupted by failed pull: %q", b)
 	}
 }
